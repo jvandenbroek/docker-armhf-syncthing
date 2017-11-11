@@ -1,6 +1,6 @@
-FROM resin/rpi-raspbian:wheezy-2015-09-02
+FROM resin/rpi-raspbian:latest
 
-ENV VERSION v0.14.9
+ENV VERSION v0.14.40
 
 RUN useradd -m syncthing
 
