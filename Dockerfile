@@ -1,32 +1,30 @@
-FROM resin/rpi-raspbian:latest
+FROM resin/rpi-raspbian:stretch
 
 ENV VERSION v0.14.40
 
-RUN useradd -m syncthing
+RUN echo 'syncthing:x:1000:1000::/var/syncthing:/sbin/nologin' >> /etc/passwd \
+    && echo 'syncthing:!::0:::::' >> /etc/shadow \
+    && mkdir /var/syncthing \
+    && chown syncthing /var/syncthing
 
-RUN apt-get update && \
-    apt-get dist-upgrade -y && \
-    apt-get install -y wget xmlstarlet ca-certificates && \
-    wget -O syncthing.tar.gz https://github.com/syncthing/syncthing/releases/download/$VERSION/syncthing-linux-arm-$VERSION.tar.gz && \
-    tar -xvf syncthing.tar.gz && \
-    mv syncthing-linux-arm-$VERSION/syncthing /home/syncthing/syncthing && \
-    chown syncthing:syncthing /home/syncthing/syncthing && \
-    rm -rf syncthing.tar.gz syncthing-linux-arm-$VERSION && \
-    apt-get remove -y wget && \
-    apt-get autoremove -y && \
-    apt-get clean
+RUN set -x \
+    && apt-get update  \
+    && apt-get dist-upgrade -y \
+    && apt-get install -y wget xmlstarlet ca-certificates \
+    && mkdir /syncthing \
+    && cd /syncthing \
+    && wget https://github.com/syncthing/syncthing/releases/download/${VERSION}/syncthing-linux-arm-$VERSION.tar.gz  \
+    && wget https://github.com/syncthing/syncthing/releases/download/${VERSION}/sha256sum.txt.asc \
+    && gpg --verify sha256sum.txt.asc \
+    && grep syncthing-linux-arm sha256sum.txt.asc | sha256sum \
+    && tar -xvf syncthing-linux-arm-${VERSION}.tar.gz \
+    && mv syncthing-linux-arm-${VERSION}/syncthing . \
+    && rm -rf syncthing-linux-arm-${VERSION} sha256sum.txt.asc syncthing-linux-arm-${VERSION}.tar.gz \
+    && apt-get remove -y wget \
+    && apt-get autoremove -y \
+    && apt-get clean
 
-ADD start.sh /start.sh
-RUN chmod +x /start.sh
-
-WORKDIR /home/syncthing
-
-RUN mkdir -p /home/syncthing/Sync && chown -R syncthing /home/syncthing/Sync
-RUN mkdir -p /home/syncthing/.config/syncthing && chown -R syncthing /home/syncthing/.config/syncthing
-
-VOLUME ["/home/syncthing/.config/syncthing", "/home/syncthing/Sync"]
-
+USER syncthing
+ENV STNOUPGRADE=1
+ENTRYPOINT ["/syncthing/syncthing", "-home", "/var/syncthing/config", "-gui-address", "0.0.0.0:8384"]
 EXPOSE 8384 22000 21025/udp
-
-CMD ["/start.sh"]
-
